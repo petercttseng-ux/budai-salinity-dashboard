@@ -1,6 +1,8 @@
 import json, os
 B = os.path.dirname(os.path.abspath(__file__))
 R = json.load(open(f'{B}/results_v2.json', encoding='utf-8'))
+R['puzi'] = json.load(open(f'{B}/puzi_deep.json', encoding='utf-8'))
+R['neff'] = json.load(open(f'{B}/neff_check.json', encoding='utf-8'))
 keep = ['date','rain','rain3','rain7','Q','logQ','sal_mean','sal_min','sal_max','ss','tide_rng','wtemp','do']
 for s in R['stations'].values():
     s['daily'] = [{k: r.get(k) for k in keep} for r in s['daily']]
