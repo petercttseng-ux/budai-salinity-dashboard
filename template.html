@@ -1,0 +1,398 @@
+<title>布袋・東石 鹽度徑流儀表板</title>
+<meta name="description" content="2026/05–09 嘉義沿海布袋、東石兩站海水鹽度與降雨量、八掌溪及朴子溪推估徑流量之相關性分析（第二版）">
+<style>
+/* Layout: single reading column, station switch pinned under the header; summary → time series → statistics → audit → methods. Tokens inherited from v1 dashboard. */
+:root{
+  color-scheme: light;
+  --surface-0:#f6f5f2; --surface-1:#fcfcfb; --surface-2:#efeeea;
+  --line:#dedcd5; --line-strong:#c5c3ba;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7b7a73;
+  --s-rain:#2a78d6; --s-flow:#eb6834; --s-sal:#1baf7a; --s-alt:#8a63c9;
+  --pos:#e34948; --neg:#2a78d6; --warn:#b7791f; --warn-bg:#fbf1dc; --gap:#ecebe6;
+  --grid:#e7e5df;
+  --f-sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#232322;
+    --line:#33332f; --line-strong:#4a4a45;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+    --s-rain:#3987e5; --s-flow:#d95926; --s-sal:#199e70; --s-alt:#a184db;
+    --pos:#e66767; --neg:#3987e5; --warn:#e0a84a; --warn-bg:#2d2416; --gap:#1f1f1d;
+    --grid:#2b2b28;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#232322;
+  --line:#33332f; --line-strong:#4a4a45;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+  --s-rain:#3987e5; --s-flow:#d95926; --s-sal:#199e70; --s-alt:#a184db;
+  --pos:#e66767; --neg:#3987e5; --warn:#e0a84a; --warn-bg:#2d2416; --gap:#1f1f1d;
+  --grid:#2b2b28;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--surface-0);color:var(--text-primary);font-family:var(--f-sans);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:32px 80px;position:relative}
+header.top{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--text-muted);margin:0 0 8px}
+h1{font-size:clamp(22px,3.2vw,32px);line-height:1.25;margin:0 0 10px;font-weight:650;text-wrap:balance}
+.sub{color:var(--text-secondary);margin:0;max-width:72ch;font-size:14.5px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-size:12px;color:var(--text-secondary);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px 11px}
+.chip.v{border-color:var(--s-sal);color:var(--text-primary)}
+.themebtn{position:absolute;top:20px;right:20px;background:var(--surface-1);border:1px solid var(--line);color:var(--text-secondary);border-radius:8px;padding:6px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.switch{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--surface-0);padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden}
+.seg button{font-family:inherit;font-size:14px;padding:7px 16px;border:0;background:var(--surface-1);color:var(--text-secondary);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--text-primary);color:var(--surface-0);font-weight:600}
+.seg button:focus-visible,.themebtn:focus-visible{outline:2px solid var(--s-rain);outline-offset:2px}
+.switch .hint{font-size:12.5px;color:var(--text-muted)}
+h2{font-size:19px;margin:44px 0 6px;font-weight:640}
+.lede{color:var(--text-secondary);margin:0 0 18px;max-width:74ch;font-size:14.5px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0 8px}
+.tile{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:15px 16px;min-width:0}
+.tile .lab{font-size:12px;color:var(--text-secondary);margin-bottom:6px}
+.tile .val{font-size:26px;font-weight:640;font-variant-numeric:tabular-nums;line-height:1.15}
+.tile .val .u{font-size:13px;font-weight:500;color:var(--text-secondary);margin-left:3px}
+.tile .note{font-size:11.5px;color:var(--text-muted);margin-top:5px}
+.card{background:var(--surface-1);border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;margin-top:14px;min-width:0}
+.card h3{font-size:15px;margin:0 0 3px;font-weight:620}
+.card .cap{font-size:12.5px;color:var(--text-secondary);margin:0 0 14px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 10px;font-size:12.5px;color:var(--text-secondary)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:11px;height:11px;border-radius:3px;flex:none}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+svg{display:block;max-width:none}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--text-secondary);font-weight:600;font-size:12.5px;border-bottom:1px solid var(--line-strong)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-num);font-size:12.8px}
+.strong{font-weight:640}
+details{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-1)}
+details summary{cursor:pointer;padding:11px 15px;font-size:13.5px;color:var(--text-secondary);font-weight:560}
+details .inner{padding:0 15px 14px;max-height:440px;overflow:auto}
+.tip{position:absolute;pointer-events:none;background:var(--surface-1);border:1px solid var(--line-strong);border-radius:9px;padding:9px 11px;font-size:12.5px;box-shadow:0 6px 22px rgba(0,0,0,.13);z-index:20;min-width:180px;opacity:0}
+.tip .th{font-weight:640;margin-bottom:6px}
+.tip .row{display:flex;gap:10px;justify-content:space-between;color:var(--text-secondary)}
+.tip .row b{color:var(--text-primary);font-variant-numeric:tabular-nums;font-weight:600}
+.rel{position:relative}
+.alert{border:1px solid var(--warn);background:var(--warn-bg);border-radius:12px;padding:14px 18px;margin-top:18px}
+.alert h3{margin:0 0 6px;font-size:14.5px;color:var(--text-primary)}
+.alert ul{margin:0;padding-left:20px}
+.alert li{font-size:13.5px;color:var(--text-secondary);margin:.3em 0}
+.alert b{color:var(--text-primary)}
+.pill{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-left:6px;vertical-align:1px}
+.pill.ok{color:var(--s-sal)} .pill.wk{color:var(--warn)} .pill.no{color:var(--text-muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px}
+.notes{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:16px}
+.notes p,.notes li{font-size:13.5px;color:var(--text-secondary)}
+.notes strong{color:var(--text-primary)}
+.notes code{background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:12.5px}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-muted)}
+@media (max-width:640px){.wrap{padding-inline:16px;padding-block:24px 60px}.themebtn{top:12px;right:12px}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;600;700&display=swap">
+
+<button class="themebtn" id="tbtn" aria-label="切換深淺色">◐ 深／淺色</button>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">農業部水產試驗所 · 沿岸環境監測分析 · 第二版</p>
+  <h1>布袋・東石海水鹽度 × 降雨量 × 河川徑流量<br>相關性分析儀表板</h1>
+  <p class="sub">整合嘉義縣環境保護局 115 年 10 月 1 日函復之東石、布袋海域水質自動監測站 5 分鐘資料，以及中央氣象署布袋（C0M750）、東石（C0M710）逐時氣象資料（2026 年 5–9 月），
+  以連續式水文模式分別推估八掌溪與朴子溪徑流量，檢視淡水入流對兩處沿岸鹽度的稀釋效應。</p>
+  <div class="meta" id="metachips"></div>
+</header>
+
+<div class="switch" role="group" aria-label="選擇測站">
+  <div class="seg"><button id="b-budai" data-st="budai" aria-pressed="true">布袋站 · 八掌溪</button><button id="b-dongshi" data-st="dongshi" aria-pressed="false">東石站 · 朴子溪</button></div>
+  <span class="hint" id="sthint"></span>
+</div>
+
+<section>
+  <h2>本次更新重點</h2>
+  <div class="alert" id="alert"></div>
+  <div class="tiles" id="tiles"></div>
+</section>
+
+<section>
+  <h2>三變數時序對照</h2>
+  <p class="lede">2026/05/01–09/30 共用時間軸。灰底為該站無水質資料期間；斜線區為資料品質存疑期間。徑流量採對數尺度。</p>
+  <div class="card rel" id="tsCard">
+    <div class="legend" id="tsLegend"></div>
+    <div class="scroll"><div id="ts"></div></div>
+    <div class="tip" id="tsTip"></div>
+  </div>
+  <details><summary>檢視逐日資料表</summary><div class="inner"><table id="dailyTable"></table></div></details>
+</section>
+
+<section>
+  <h2>相關係數總覽</h2>
+  <p class="lede" id="corrLede"></p>
+  <div class="card"><h3 id="corrTitle"></h3><p class="cap" id="corrCap"></p><div class="scroll"><div id="corrBars"></div></div></div>
+  <details><summary>完整統計表（含 Spearman ρ 與 p 值）</summary><div class="inner"><table id="corrTable"></table></div></details>
+</section>
+
+<section>
+  <h2>落後相關與迴歸</h2>
+  <p class="lede">驅動變數前推 0–10 日後與當日鹽度求相關，判斷淡水訊號傳到測站的時間尺度；右圖為每日 log₁₀ 徑流量對日均鹽度。</p>
+  <div class="grid2">
+    <div class="card rel" id="lagCard"><h3>落後 L 日之相關係數</h3>
+      <div class="legend"><span><i class="sw" style="background:var(--s-rain)"></i>日降雨量</span><span><i class="sw" style="background:var(--s-flow)"></i>log₁₀(徑流量)</span></div>
+      <div class="scroll"><div id="lag"></div></div></div>
+    <div class="card rel" id="scCard"><h3>log₁₀(推估徑流量) 對 日均鹽度</h3>
+      <p class="cap">點越深代表當日雨量越大；虛線為最小平方迴歸。</p>
+      <div class="scroll"><div id="scatter"></div></div><div class="tip" id="scTip"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>偏相關</h3><p class="cap">扣除第三變數後的淨關係。潮差取自測站水位日變幅（僅水位有效日）。</p><div class="scroll"><table id="pcTable"></table></div></div>
+    <div class="card"><h3>複迴歸</h3><p class="cap" id="regCap"></p><div class="scroll"><table id="regTable"></table></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>降雨事件</h2>
+  <p class="lede">累積雨量 ≥ 20 mm 的連續降雨事件，比較事件前 3 日平均鹽度與事件後 5 日內最低日均鹽度。</p>
+  <div class="card"><div class="scroll"><table id="evTable"></table></div></div>
+</section>
+
+<section>
+  <h2>資料品質稽核</h2>
+  <p class="lede">新資料納入前的逐項檢查結果。此節不隨測站切換。</p>
+  <div class="card"><div class="scroll"><table id="qaTable"></table></div></div>
+  <div class="card"><h3>月雨量（缺漏時數以鄰站補值）</h3><div class="scroll"><table id="moTable"></table></div></div>
+</section>
+
+<section>
+  <h2>方法與限制</h2>
+  <div class="notes" id="notes"></div>
+</section>
+<footer><p id="foot"></p></footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+</script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), NS="http://www.w3.org/2000/svg";
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const el=(t,a={},p=null)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;};
+const fmt=(v,n=2)=>(v===null||v===undefined||Number.isNaN(v))?"—":Number(v).toFixed(n);
+const pf=p=>p===null||p===undefined?"—":(p<0.001?"< 0.001":p.toFixed(3));
+const star=p=>p==null?"":(p<0.01?"**":(p<0.05?"*":""));
+const th=a=>"<thead><tr>"+a.map(x=>"<th>"+x+"</th>").join("")+"</tr></thead>";
+let ST="budai";
+try{const t=localStorage.getItem("bd-theme");if(t)document.documentElement.setAttribute("data-theme",t);const s=localStorage.getItem("bd-st");if(s&&DATA.stations[s])ST=s;}catch(e){}
+if(location.hash==="#dongshi")ST="dongshi";
+$("#tbtn").addEventListener("click",()=>{const c=document.documentElement.getAttribute("data-theme");const sd=matchMedia("(prefers-color-scheme: dark)").matches;
+  const n=c?(c==="dark"?"light":"dark"):(sd?"light":"dark");document.documentElement.setAttribute("data-theme",n);try{localStorage.setItem("bd-theme",n);}catch(e){}render();});
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{ST=b.dataset.st;try{localStorage.setItem("bd-st",ST);}catch(e){}render();}));
+
+const META={
+ budai:{name:"布袋",cwa:"C0M750",river:"八掌溪",gap:[["2026-07-22","2026-09-30","取水系統遭漂流蚵棚毀損，停機修復"]],sus:[],
+  hint:"資料期間 05/01–07/21（7/22 起停機）"},
+ dongshi:{name:"東石",cwa:"C0M710",river:"朴子溪",gap:[["2026-05-01","2026-06-30","精進優化工程，暫停運轉"],["2026-09-01","2026-09-30","未在本次函復範圍"]],
+  sus:[["2026-07-01","2026-07-21","多參數與布袋站逐筆相同"]],hint:"資料期間 07/01–08/31（1–6 月停機）"}};
+
+function chips(){
+  const q=DATA.qa;
+  $("#metachips").innerHTML=["分析期間 2026/05/01 ～ 09/30","布袋 "+DATA.stations.budai.summary.n_days+" 日 · 東石 "+DATA.stations.dongshi.summary.n_days+" 日",
+   (DATA.stations.budai.summary.n_wq_raw+DATA.stations.dongshi.summary.n_wq_raw).toLocaleString()+" 筆 5 分鐘水質紀錄","徑流量為模式推估值"].map((t,i)=>'<span class="chip'+(i==0?' v':'')+'">'+t+'</span>').join("");
+}
+
+function alertBox(){
+  const b=DATA.stations.budai, d=DATA.stations.dongshi, v1=b.v1_window.pairs;
+  const lq="log₁₀(徑流量) → 日均鹽度", r7="7日累積雨量 → 日均鹽度";
+  if(ST==="budai"){
+    $("#alert").innerHTML='<h3>布袋站：期間由 66 日延長為 '+b.summary.n_days+' 日，結論更穩固</h3><ul>'+
+    '<li>以嘉義縣環保局正式資料重算，<b>log₁₀ 徑流量與日均鹽度 r = '+fmt(b.main.pairs[lq].r,3)+'</b>（第一版 −0.537）；<b>7 日累積雨量 r = '+fmt(b.main.pairs[r7].r,3)+'</b>（第一版 −0.619）。</li>'+
+    '<li>不依賴水文模式的雨量指標前後版幾乎一致；徑流指標變強主要來自模式提前至 5/1 起算與雨量缺漏補值，見方法說明。</li>'+
+    '<li>新增潮差控制：扣除潮差後徑流量偏相關仍為 <b>r = '+fmt(b.main.partial["log₁₀Q vs 鹽度｜控制潮差"].r,3)+'</b>，稀釋效應不是潮汐假象。</li>'+
+    '<li>布袋站水溫平均僅 '+b.summary.wtemp_mean+' °C，低於同期氣溫 '+b.summary.air_mean+' °C 近 6 °C，疑感測器偏差；複迴歸已改以潮差取代水溫。</li></ul>';
+  } else {
+    const s=d.sens_after0722;
+    $("#alert").innerHTML='<h3>東石站：首次納入，原始相關不顯著，扣除潮差後浮現稀釋訊號</h3><ul>'+
+    '<li>全期（'+d.summary.n_days+' 日）log₁₀ 徑流量與鹽度 r = '+fmt(d.main.pairs[lq].r,3)+'，未達顯著；排除存疑的 7/1–7/21 後為 r = '+fmt(s.pairs[lq].r,3)+'（n = '+s.n+'）。</li>'+
+    '<li>以 8 月水位有效日控制潮差後，<b>7 日累積雨量偏相關 r = '+fmt(d.main.partial["7日雨量 vs 鹽度｜控制潮差"].r,3)+'</b>（p < 0.001）、徑流量 r = '+fmt(d.main.partial["log₁₀Q vs 鹽度｜控制潮差"].r,3)+'。</li>'+
+    '<li>8/20 起 499 mm 豪雨事件後，日均鹽度於 8 日內由 31.77 降至 30.70 psu（−1.07），反應較布袋站慢。</li>'+
+    '<li><b>7/1–7/21 東石站化學需氧量、懸浮固體、油脂、溶氧、pH、葉綠素與布袋站逐筆完全相同</b>，已將該段六項參數設為缺值，建議函請環保局查明。</li></ul>';
+  }
+}
+
+function tiles(){
+  const R=DATA.stations[ST], S=R.summary, P=R.main.pairs;
+  const lq=P["log₁₀(徑流量) → 日均鹽度"], r7=P["7日累積雨量 → 日均鹽度"];
+  const t=[["log₁₀Q → 鹽度",fmt(lq.r,3),"","Pearson r，n = "+lq.n+" 日 "+star(lq.p)],
+    ["7 日累積雨量 → 鹽度",fmt(r7.r,3),"","Pearson r "+star(r7.p)],
+    ["日均鹽度",fmt(S.sal_mean,2),"psu","日均最低 "+fmt(S.sal_daily_min,2)+"，變幅 "+fmt(S.sal_daily_rng,2)],
+    ["水質期間雨量",fmt(S.rain_total,1),"mm",META[ST].cwa+"；5–9 月合計 "+fmt(S.rain_total_all,0)+" mm"],
+    [S.river+"推估洪峰",fmt(S.Q_max,0),"m³/s","水質期間日均 "+fmt(S.Q_mean,1)+" m³/s"],
+    ["推估逕流係數",fmt(S.runoff_coef,2),"","流域 "+S.basin_area+" km²"]];
+  $("#tiles").innerHTML=t.map(x=>'<div class="tile"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+(x[2]?'<span class="u">'+x[2]+'</span>':'')+'</div><div class="note">'+x[3]+'</div></div>').join("");
+}
+
+function drawTS(){
+  const R=DATA.stations[ST], D=R.daily, M=META[ST], host=$("#ts"); host.innerHTML="";
+  $("#tsLegend").innerHTML='<span><i class="sw" style="background:var(--s-rain)"></i>日降雨量（'+M.name+'站 '+M.cwa+'，mm）</span><span><i class="sw" style="background:var(--s-flow)"></i>推估日均徑流量（'+M.river+'，m³/s）</span><span><i class="sw" style="background:var(--s-sal)"></i>日均鹽度（'+M.name+'測站，psu）</span>';
+  const W=Math.max(760,host.clientWidth||900),PL=52,PR=16,PT=24,H1=120,H2=130,H3=150,G=34,PB=30,H=PT+H1+G+H2+G+H3+PB;
+  const svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":"降雨、徑流與鹽度時序"},host);
+  const n=D.length, X=i=>PL+(W-PL-PR)*i/(n-1), idx=ds=>D.findIndex(r=>r.date===ds);
+  const txt=css("--text-primary"),mut=css("--text-muted"),gc=css("--grid");
+  const yB=PT+H1+G+H2+G+H3;
+  // gap and suspect shading
+  const defs=el("defs",{},svg), pat=el("pattern",{id:"hatch",width:7,height:7,patternUnits:"userSpaceOnUse",patternTransform:"rotate(45)"},defs);
+  el("rect",{width:7,height:7,fill:css("--warn-bg")},pat); el("line",{x1:0,y1:0,x2:0,y2:7,stroke:css("--warn"),"stroke-width":1.4,"stroke-opacity":.5},pat);
+  const band=(a,b,fill,lab)=>{const i0=idx(a),i1=idx(b);const x0=X(Math.max(0,i0-.5)),x1=X(Math.min(n-1,i1+.5));
+    el("rect",{x:x0,y:PT+H1+G+H2+G,width:x1-x0,height:H3,fill:fill},svg);
+    const t=el("text",{x:(x0+x1)/2,y:PT+H1+G+H2+G+H3/2,fill:mut,"font-size":"11","text-anchor":"middle"},svg);t.textContent=(x1-x0)>150?lab:"";};
+  M.gap.forEach(g=>band(g[0],g[1],css("--gap"),"無資料："+g[2]));
+  M.sus.forEach(g=>band(g[0],g[1],"url(#hatch)","存疑："+g[2]));
+  const panels=[
+    {y:PT,h:H1,min:0,max:Math.ceil(Math.max(...D.map(r=>r.rain||0))/50)*50,title:"日降雨量 (mm)",type:"bar",c:css("--s-rain")},
+    {y:PT+H1+G,h:H2,min:0,max:3.5,title:"推估日均徑流量 (m³/s，對數)",type:"log",c:css("--s-flow")},
+    {y:PT+H1+G+H2+G,h:H3,min:30,max:34,title:"日均鹽度 (psu)",type:"sal",c:css("--s-sal")}];
+  const sal=D.map(r=>r.sal_mean).filter(v=>v!=null); panels[2].min=Math.floor(Math.min(...sal)*2)/2-.5; panels[2].max=Math.ceil(Math.max(...sal)*2)/2+.5;
+  panels.forEach(p=>{
+    const sc=v=>p.y+p.h-(Math.max(p.min,Math.min(p.max,v))-p.min)/(p.max-p.min)*p.h; p.sc=sc;
+    el("text",{x:PL,y:p.y-8,fill:txt,"font-size":"12","font-weight":"600"},svg).textContent=p.title;
+    const ticks=p.type==="log"?[0,1,2,3]:Array.from({length:5},(_,k)=>p.min+(p.max-p.min)*k/4);
+    ticks.forEach(v=>{const y=sc(v);el("line",{x1:PL,x2:W-PR,y1:y,y2:y,stroke:gc},svg);
+      el("text",{x:PL-8,y:y+4,fill:mut,"font-size":"10.5","text-anchor":"end","font-family":css("--f-num")},svg).textContent=p.type==="log"?Math.pow(10,v).toLocaleString():(p.type==="sal"?v.toFixed(1):Math.round(v));});
+    if(p.type==="bar"){const bw=Math.max(1.5,(W-PL-PR)/n-1.5);D.forEach((r,i)=>{if(!r.rain)return;const y=sc(r.rain);el("rect",{x:X(i)-bw/2,y:y,width:bw,height:p.y+p.h-y,rx:1.5,fill:p.c},svg);});}
+    else{const key=p.type==="log"?"logQ":"sal_mean";let d="",pen=false;
+      D.forEach((r,i)=>{const v=r[key];if(v==null){pen=false;return;}d+=(pen?"L":"M")+X(i).toFixed(1)+" "+sc(v).toFixed(1);pen=true;});
+      if(p.type==="log"){el("path",{d:d+"L"+X(n-1)+" "+(p.y+p.h)+"L"+PL+" "+(p.y+p.h)+"Z",fill:p.c,"fill-opacity":.14},svg);}
+      el("path",{d:d,fill:"none",stroke:p.c,"stroke-width":2,"stroke-linejoin":"round"},svg);
+      if(p.type==="sal"){let mi=-1;D.forEach((r,i)=>{if(r.sal_mean!=null&&(mi<0||r.sal_mean<D[mi].sal_mean))mi=i;});
+        el("circle",{cx:X(mi),cy:sc(D[mi].sal_mean),r:4.5,fill:p.c,stroke:css("--surface-1"),"stroke-width":2},svg);
+        el("text",{x:Math.min(X(mi)+9,W-PR-140),y:sc(D[mi].sal_mean)+15,fill:txt,"font-size":"11","font-weight":"600"},svg).textContent="最低 "+fmt(D[mi].sal_mean,2)+" psu（"+D[mi].date.slice(5)+"）";}
+    }
+  });
+  el("line",{x1:PL,x2:W-PR,y1:yB,y2:yB,stroke:css("--line-strong")},svg);
+  D.forEach((r,i)=>{if(r.date.slice(8)==="01"){const x=X(i);el("line",{x1:x,x2:x,y1:PT-4,y2:yB+4,stroke:gc,"stroke-dasharray":"2 3"},svg);
+    el("text",{x:x+3,y:yB+18,fill:mut,"font-size":"10.5"},svg).textContent=(+r.date.slice(5,7))+" 月";}});
+  const cross=el("line",{y1:PT-8,y2:yB,stroke:css("--line-strong"),"stroke-dasharray":"3 3",opacity:0},svg);
+  const tip=$("#tsTip"),card=$("#tsCard");
+  const hit=el("rect",{x:PL,y:PT-10,width:W-PL-PR,height:yB-PT+10,fill:"transparent"},svg);
+  hit.addEventListener("mousemove",ev=>{const b=svg.getBoundingClientRect(),sx=(ev.clientX-b.left)*(W/b.width);
+    let i=Math.round((sx-PL)/((W-PL-PR)/(n-1)));i=Math.max(0,Math.min(n-1,i));const r=D[i],x=X(i);
+    cross.setAttribute("x1",x);cross.setAttribute("x2",x);cross.setAttribute("opacity",.9);
+    tip.innerHTML='<div class="th">'+r.date+'</div><div class="row"><span>降雨量</span><b>'+fmt(r.rain,1)+' mm</b></div><div class="row"><span>徑流量</span><b>'+fmt(r.Q,1)+' m³/s</b></div><div class="row"><span>日均鹽度</span><b>'+(r.sal_mean==null?"無資料":fmt(r.sal_mean,2)+" psu")+'</b></div>'+(r.tide_rng!=null?'<div class="row"><span>潮差</span><b>'+fmt(r.tide_rng,2)+' m</b></div>':'');
+    const cb=card.getBoundingClientRect();tip.style.opacity=1;tip.style.left=Math.min(ev.clientX-cb.left+14,cb.width-200)+"px";tip.style.top=(ev.clientY-cb.top-20)+"px";});
+  hit.addEventListener("mouseleave",()=>{tip.style.opacity=0;cross.setAttribute("opacity",0);});
+  const rows=D.filter(r=>r.sal_mean!=null);
+  $("#dailyTable").innerHTML=th(["日期","降雨 (mm)","7日累積","徑流量 (m³/s)","日均鹽度","日最低","日最高","潮差 (m)","懸浮固體"])+"<tbody>"+rows.map(r=>"<tr><td>"+r.date+"</td>"+
+    [["rain",1],["rain7",1],["Q",1],["sal_mean",2],["sal_min",1],["sal_max",1],["tide_rng",2],["ss",1]].map(k=>'<td class="num">'+fmt(r[k[0]],k[1])+"</td>").join("")+"</tr>").join("")+"</tbody>";
+}
+
+function corrBars(){
+  const R=DATA.stations[ST], host=$("#corrBars"); host.innerHTML="";
+  const A=R.main.pairs, Bp=ST==="budai"?R.v1_window.pairs:R.sens_after0722.pairs;
+  const la=ST==="budai"?"本版全期 05/01–07/21（n = "+R.main.n+"）":"全期 07/01–08/31（n = "+R.main.n+"）";
+  const lb=ST==="budai"?"本版資料、第一版期間 05/10–07/15（n = "+R.v1_window.n+"）":"排除存疑段 07/22–08/31（n = "+R.sens_after0722.n+"）";
+  $("#corrTitle").textContent="各配對 Pearson r：兩種期間並列";
+  $("#corrCap").innerHTML='<span style="color:var(--s-sal)">■</span> '+la+'　<span style="color:var(--s-alt)">■</span> '+lb+'。** p<0.01、* p<0.05。';
+  $("#corrLede").textContent=ST==="budai"?"負值代表淡水輸入增加時鹽度下降。並列第一版期間，檢查結論是否因資料延長或改用環保局正式檔而改變。":"東石站 7/1–7/21 部分參數存疑，並列排除該段後的結果作為敏感度檢驗。";
+  const keys=Object.keys(A), W=Math.max(640,host.clientWidth||860), LW=210, mid=LW+(W-LW-60)/2, half=(W-LW-60)/2, rowH=40, H=keys.length*rowH+30;
+  const svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H},host);
+  const txt=css("--text-primary"),mut=css("--text-muted");
+  [-1,-.5,0,.5,1].forEach(v=>{const x=mid+v*half;el("line",{x1:x,x2:x,y1:0,y2:H-24,stroke:v===0?css("--line-strong"):css("--grid")},svg);
+    el("text",{x:x,y:H-8,fill:mut,"font-size":"10.5","text-anchor":"middle"},svg).textContent=v.toFixed(1);});
+  keys.forEach((k,i)=>{const y=i*rowH+6;el("text",{x:0,y:y+19,fill:txt,"font-size":"12.5"},svg).textContent=k;
+    [[A[k],css("--s-sal"),0],[Bp[k],css("--s-alt"),15]].forEach(([v,c,o])=>{if(!v||v.r==null)return;const w=Math.abs(v.r)*half,x=v.r<0?mid-w:mid;
+      el("rect",{x:x,y:y+o,width:Math.max(w,1),height:12,rx:2,fill:c,"fill-opacity":v.p<0.05?1:.35},svg);
+      el("text",{x:v.r<0?x-6:x+w+6,y:y+o+10,fill:txt,"font-size":"11","text-anchor":v.r<0?"end":"start","font-family":css("--f-num")},svg).textContent=fmt(v.r,3)+star(v.p);});});
+  $("#corrTable").innerHTML=th(["變數配對","n","Pearson r","p","Spearman ρ","p (ρ)"])+"<tbody>"+keys.map(k=>{const v=A[k];return "<tr><td>"+k+'</td><td class="num">'+v.n+'</td><td class="num strong">'+fmt(v.r,3)+'</td><td class="num">'+pf(v.p)+'</td><td class="num">'+fmt(v.rho,3)+'</td><td class="num">'+pf(v.prho)+"</td></tr>";}).join("")+"</tbody>";
+}
+
+function drawLag(){
+  const R=DATA.stations[ST].main, host=$("#lag"); host.innerHTML="";
+  const W=Math.max(420,host.clientWidth||520),PL=44,PR=14,PT=12,H=250,PB=38,ph=H-PT-PB;
+  const svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H},host);
+  const ymin=-0.8,ymax=0.4,sc=v=>PT+ph-(v-ymin)/(ymax-ymin)*ph,xs=i=>PL+(W-PL-PR)*i/10,mut=css("--text-muted");
+  for(let v=-0.8;v<=0.41;v+=0.2){const y=sc(v);el("line",{x1:PL,x2:W-PR,y1:y,y2:y,stroke:Math.abs(v)<1e-9?css("--line-strong"):css("--grid")},svg);
+    el("text",{x:PL-6,y:y+4,fill:mut,"font-size":"10.5","text-anchor":"end"},svg).textContent=v.toFixed(1);}
+  for(let i=0;i<=10;i++)el("text",{x:xs(i),y:H-PB+16,fill:mut,"font-size":"10.5","text-anchor":"middle"},svg).textContent=i;
+  el("text",{x:(PL+W-PR)/2,y:H-4,fill:css("--text-secondary"),"font-size":"11.5","text-anchor":"middle"},svg).textContent="落後日數 L";
+  [[R.lag_rain,css("--s-rain"),-10],[R.lag_Q,css("--s-flow"),16]].forEach(([s,c,dy])=>{
+    el("path",{d:s.map((o,i)=>(i?"L":"M")+xs(o.lag)+" "+sc(o.r)).join(""),fill:"none",stroke:c,"stroke-width":2.2},svg);
+    let b=s[0];s.forEach(o=>{if(o.r<b.r)b=o;});
+    s.forEach(o=>el("circle",{cx:xs(o.lag),cy:sc(o.r),r:o===b?5:3,fill:o.p<0.05?c:css("--surface-1"),stroke:c,"stroke-width":1.6},svg));
+    el("text",{x:Math.min(xs(b.lag)+8,W-PR-110),y:sc(b.r)+dy,fill:css("--text-primary"),"font-size":"11","font-weight":"600"},svg).textContent="L="+b.lag+"，r="+fmt(b.r,3);});
+}
+
+function drawScatter(){
+  const R=DATA.stations[ST], D=R.daily.filter(r=>r.sal_mean!=null&&r.logQ!=null), host=$("#scatter"); host.innerHTML="";
+  const W=Math.max(420,host.clientWidth||520),PL=48,PR=14,PT=14,H=250,PB=38,pw=W-PL-PR,ph=H-PT-PB;
+  const svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H},host);
+  const xs=D.map(r=>r.logQ),ys=D.map(r=>r.sal_mean),x0=Math.floor(Math.min(...xs)*2)/2,x1=Math.ceil(Math.max(...xs)*2)/2,y0=Math.floor(Math.min(...ys)*2)/2,y1=Math.ceil(Math.max(...ys)*2)/2;
+  const X=v=>PL+(v-x0)/(x1-x0)*pw,Y=v=>PT+ph-(v-y0)/(y1-y0)*ph,mut=css("--text-muted");
+  for(let v=Math.ceil(x0);v<=x1;v++){el("line",{x1:X(v),x2:X(v),y1:PT,y2:PT+ph,stroke:css("--grid")},svg);el("text",{x:X(v),y:H-PB+16,fill:mut,"font-size":"10.5","text-anchor":"middle"},svg).textContent=Math.pow(10,v).toLocaleString();}
+  for(let v=y0;v<=y1+1e-9;v+=0.5){el("line",{x1:PL,x2:W-PR,y1:Y(v),y2:Y(v),stroke:css("--grid")},svg);el("text",{x:PL-6,y:Y(v)+4,fill:mut,"font-size":"10.5","text-anchor":"end"},svg).textContent=v.toFixed(1);}
+  el("text",{x:PL+pw/2,y:H-4,fill:css("--text-secondary"),"font-size":"11.5","text-anchor":"middle"},svg).textContent="徑流量 m³/s（對數）";
+  const dark=css("--surface-1")==="#1a1a19",ramp=dark?["#184f95","#256abf","#3987e5","#5598e7","#86b6ef","#b7d3f6"]:["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95"];
+  const tip=$("#scTip"),card=$("#scCard");
+  D.forEach(r=>{const k=!r.rain?0:r.rain<2?1:r.rain<10?2:r.rain<30?3:r.rain<80?4:5;
+    const c=el("circle",{cx:X(r.logQ),cy:Y(r.sal_mean),r:4.5,fill:ramp[k],stroke:css("--line-strong"),"stroke-width":.8},svg);
+    c.addEventListener("mouseenter",ev=>{tip.innerHTML='<div class="th">'+r.date+'</div><div class="row"><span>徑流量</span><b>'+fmt(r.Q,1)+' m³/s</b></div><div class="row"><span>日均鹽度</span><b>'+fmt(r.sal_mean,2)+'</b></div><div class="row"><span>雨量</span><b>'+fmt(r.rain,1)+' mm</b></div>';
+      const cb=card.getBoundingClientRect();tip.style.opacity=1;tip.style.left=Math.min(ev.clientX-cb.left+12,cb.width-200)+"px";tip.style.top=(ev.clientY-cb.top-16)+"px";});
+    c.addEventListener("mouseleave",()=>tip.style.opacity=0);});
+  const n=D.length,mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;let nu=0,de=0;D.forEach(r=>{nu+=(r.logQ-mx)*(r.sal_mean-my);de+=(r.logQ-mx)**2;});
+  const b=nu/de,a=my-b*mx;el("line",{x1:X(x0),y1:Y(a+b*x0),x2:X(x1),y2:Y(a+b*x1),stroke:css("--s-flow"),"stroke-width":2.2,"stroke-dasharray":"6 4"},svg);
+  el("text",{x:W-PR-6,y:PT+14,fill:css("--text-primary"),"font-size":"11.5","text-anchor":"end","font-weight":"600"},svg).textContent="鹽度 = "+fmt(a,2)+(b<0?" − ":" + ")+fmt(Math.abs(b),3)+" × log₁₀Q";
+}
+
+function statTables(){
+  const R=DATA.stations[ST].main;
+  $("#pcTable").innerHTML=th(["配對｜控制變數","n","偏相關 r","p"])+"<tbody>"+Object.entries(R.partial).map(([k,v])=>"<tr><td>"+k+'</td><td class="num">'+v.n+'</td><td class="num strong">'+fmt(v.r,3)+star(v.p)+'</td><td class="num">'+pf(v.p)+"</td></tr>").join("")+"</tbody>";
+  const G=R.reg;$("#regCap").textContent="日均鹽度 ~ "+G.vars.slice(1).join(" + ")+(ST==="dongshi"?"（7 月無水位資料，未納入潮差）":"");
+  $("#regTable").innerHTML=th(["變數","β","t","p"])+"<tbody>"+G.vars.map((v,i)=>"<tr><td>"+v+'</td><td class="num strong">'+fmt(G.beta[i],4)+'</td><td class="num">'+fmt(G.t[i],2)+'</td><td class="num">'+pf(G.p[i])+"</td></tr>").join("")+'<tr><td colspan="4" style="text-align:left;color:var(--text-secondary)">n = '+G.n+"，R² = "+fmt(G.r2,3)+"，調整後 R² = "+fmt(G.adj_r2,3)+"</td></tr></tbody>";
+  const E=DATA.stations[ST].events;
+  $("#evTable").innerHTML=th(["起始日","降雨日數","累積雨量 (mm)","推估洪峰 (m³/s)","事件前鹽度","事件後最低","降幅 (psu)","最低出現（日後）","懸浮固體峰值"])+"<tbody>"+(E.length?E.map(e=>"<tr><td>"+e.start+'</td><td class="num">'+e.days+'</td><td class="num">'+fmt(e.rain,1)+'</td><td class="num">'+fmt(e.Qpeak,0)+'</td><td class="num">'+fmt(e.sal_pre,2)+'</td><td class="num">'+fmt(e.sal_min,2)+'</td><td class="num strong">−'+fmt(e.drop,2)+'</td><td class="num">'+e.lag_days+'</td><td class="num">'+fmt(e.ss_max,1)+"</td></tr>").join(""):'<tr><td colspan="9">無符合事件</td></tr>')+"</tbody>";
+}
+
+function qa(){
+  const q=DATA.qa,id=q.dongshi_budai_copy.identical_fraction,b=DATA.stations.budai.summary,d=DATA.stations.dongshi.summary;
+  const rows=[
+   ["東石站 7/1–7/21 與布袋站重疊 "+q.dongshi_budai_copy.overlap.toLocaleString()+" 筆","COD、懸浮固體、油脂、溶氧、pH、葉綠素 100 % 逐筆相同；鹽度僅 "+(id["鹽度"]*100).toFixed(0)+" %、導電度 0 % 相同","wk","六項參數設為缺值，鹽度保留並做敏感度檢驗"],
+   ["布袋站環保局檔 vs 第一版原始檔","重疊 "+q.budai_vs_v1.overlap.toLocaleString()+" 筆；鹽度有 "+q.budai_vs_v1.sal_diff_rows.toLocaleString()+" 筆不同（"+q.budai_vs_v1.sal_diff_days.join("、")+"），其餘參數完全相同","wk","採用環保局正式函復版本"],
+   ["布袋站水溫","平均 "+b.wtemp_mean+" °C，低於同期氣溫 "+b.air_mean+" °C；東石站 "+d.wtemp_mean+" °C 合理","wk","不再以水溫為控制變數"],
+   ["鹽度物理範圍品管（25 < S ≤ 36、導電度 > 5）","布袋剔除 "+b.qc_removed+" 筆，東石剔除 "+d.qc_removed+" 筆","ok","剔除"],
+   ["雨量缺漏","C0M750 缺 "+q.rain_fill.C0M750.missing+" 時（補 "+q.rain_fill.C0M750.filled+"）；C0M710 缺 "+q.rain_fill.C0M710.missing+" 時（補 "+q.rain_fill.C0M710.filled+"）；兩站日雨量 r = "+q.rain_daily_r,"ok","以鄰站同時段值補值，其餘視為 0"],
+   ["水位（潮汐）欄位","兩站皆具 12.4 h 與 25 h 主週期；東石 7 月全為 0","ok","日變幅作為潮差指標，0 值設為缺值"],
+   ["布袋站 7/22 起、東石站 1–6 月","環保局函：蚵棚毀損取水系統；精進優化工程停機","no","無資料"]];
+  const lab={ok:"已處理",wk:"需留意",no:"資料缺口"};
+  $("#qaTable").innerHTML=th(["檢查項目","發現","狀態","處置"])+"<tbody>"+rows.map(r=>"<tr><td>"+r[0]+'</td><td style="text-align:left;white-space:normal;min-width:280px">'+r[1]+'</td><td><span class="pill '+r[2]+'">'+lab[r[2]]+'</span></td><td style="text-align:left;white-space:normal;min-width:180px">'+r[3]+"</td></tr>").join("")+"</tbody>";
+  const mo=DATA.monthly_rain;$("#moTable").innerHTML=th(["月份","布袋 C0M750 (mm)","東石 C0M710 (mm)"])+"<tbody>"+Object.keys(mo).filter(k=>+k<=9).map(k=>"<tr><td>"+k+' 月</td><td class="num">'+fmt(mo[k]["布袋 C0M750"],1)+'</td><td class="num">'+fmt(mo[k]["東石 C0M710"],1)+"</td></tr>").join("")+"</tbody>";
+}
+
+function notes(){
+  const P=DATA.params;
+  $("#notes").innerHTML='<p><strong>資料來源</strong>：嘉義縣環境保護局 115/10/01 嘉環水字第 1150033589 號函附件 1–5（東石 7–8 月、布袋 5/1–7/21，5 分鐘）；中央氣象署 C0M750 布袋、C0M710 東石自動站逐時資料（2026/05–09）。第一版使用之布袋原始檔僅作比對。</p>'+
+  '<p><strong>徑流量為推估值</strong>：水利署公開驗證流量僅至 2025 年，故以 HBV 型雙線性水庫模式推估。八掌溪流域 474.74 km²（布袋雨量驅動）、朴子溪流域 426.6 km²（東石雨量驅動）。參數兩流域相同：FC = '+P.FC+' mm、β = '+P.BETA+'、LP = '+P.LP+'、直接逕流滯時 '+P.TQ+' h、基流滯時 30 日、入滲比例 '+P.PERC+'、地形增雨係數 '+P.K_OROG+'、初始基流 '+P.BASE0+' m³/s，模式自 5/1 起算。絕對量值不應引用為官方流量。</p>'+
+  '<p><strong>與第一版差異</strong>：布袋站以第一版期間（5/10–7/15）重算，雨量類相關係數幾乎不變（7 日累積 −0.602 vs −0.619），log₁₀ 徑流量由 −0.537 變為 '+fmt(DATA.stations.budai.v1_window.pairs["log₁₀(徑流量) → 日均鹽度"].r,3)+'。差異主要來自模式提前 9 日起算與雨量補值；乾季基流隨時間遞減，與鹽度的季節趨勢有共變成分，因此徑流指標的 r 宜視為上限，雨量類指標是較保守的佐證。</p>'+
+  '<p><strong>限制</strong></p><ol>'+
+  '<li>兩站資料期間不重疊於同一季節段（布袋 5–7 月梅雨期、東石 7–8 月颱風豪雨期），兩站係數不宜直接比較強弱。</li>'+
+  '<li>東石站 7/1–7/21 多參數疑為資料匯出錯置，鹽度欄雖不同但可信度連帶下降；東石潮差僅 8 月可用（n ≈ 31）。</li>'+
+  '<li>布袋站逐日最低鹽度多次落在 31.1 psu 定值，疑感測器下限或量化效應，故以日均值為主要指標。</li>'+
+  '<li>未納入農業取排水、魚塭換水與風場水位堆疊；模式參數未經實測流量率定。</li></ol>'+
+  '<p><strong>建議</strong>：函請嘉義縣環保局說明東石站 7/1–7/21 資料重複原因並提供更正檔；布袋站修復後續補 7/22 以後資料；向水利署第五河川分局洽詢八掌溪（軍輝橋）、朴子溪（六腳大橋）2026 年即時流量以率定模式。</p>';
+  $("#foot").textContent="農業部水產試驗所 · 第二版產製日期 "+DATA.generated+" · 原始觀測資料著作權屬中央氣象署與嘉義縣環境保護局";
+}
+
+function render(){
+  document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.st===ST?"true":"false"));
+  $("#sthint").textContent=META[ST].hint;
+  alertBox();tiles();drawTS();corrBars();drawLag();drawScatter();statTables();
+}
+chips();qa();notes();render();
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(render,150);});
+})();
+</script>
